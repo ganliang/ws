@@ -13,10 +13,16 @@ import org.dom4j.Element;
 import com.kingbase.ws.bean.BindingBean;
 import com.kingbase.ws.bean.OperationBean;
 import com.kingbase.ws.bean.ParameterBean;
+import com.kingbase.ws.bean.ParameterTypeBean;
+import com.kingbase.ws.bean.ParameterTypeBean.BasicTypeBean;
 import com.kingbase.ws.bean.ServiceBean;
 
 public class ParameterUtil {
 
+	private static final String SOAP_BODY_PREFIX="<?xml version=\"1.0\" encoding=\"UTF-8\"?><soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"><soapenv:Header></soapenv:Header><soapenv:Body>";
+	
+	private static final String SOAP_BODY_SUFFEX="</soapenv:Body></soapenv:Envelope>";
+	
 	/**
 	 * 打印多个services
 	 * @param serviceBeans
@@ -123,12 +129,126 @@ public class ParameterUtil {
 					continue;
 				}
 				for (ParameterBean parameterBean : inParameters) {
-					parameterMap.put(parameterBean.getParameterName(), "?");
+					String parameterType = parameterBean.getParameterType();
+					Object parameter = null;
+					//如果参数类型不是基本类型
+					if(parameterType!=null&&!"string".equals(parameterType)){
+						List<BasicTypeBean> basicTypeBeans = getBasicTypeBean(serviceBean, parameterType);
+						Map<String,Object> map=new HashMap<String,Object>();
+						for (BasicTypeBean basicTypeBean : basicTypeBeans) {
+							map.put(basicTypeBean.getBasicTypeName(), "?");
+						}
+						parameter=map;
+					}else{
+						parameter="?";
+					}
+					parameterMap.put(parameterBean.getParameterName(), parameter);
 				}
 				break;
 			}
 		}
 	    return parameterMap;
+	}
+	
+	/**
+	 * 获取方法的输入参数
+	 * @param serviceBean
+	 * @param methodName
+	 * @return
+	 */
+	public static String getInParameter2(ServiceBean serviceBean,String methodName){
+		if(serviceBean==null||methodName==null||"".equals(methodName)){
+			throw new IllegalArgumentException();
+		}
+		BindingBean bindingBean = selectBindingBean(serviceBean);
+		List<OperationBean> operations = bindingBean.getOperations();
+		
+		StringBuilder parameterBuilder=new StringBuilder();
+		
+		OperationBean operation = getOperation(operations, methodName);
+		if(operation==null){
+			throw new IllegalArgumentException("方法【"+methodName+"】不存在");
+		}
+		
+
+		String xmlns="xmlns";
+		if("xsd".equalsIgnoreCase(serviceBean.getWsdlType())){
+			methodName="xsd:"+methodName;
+			xmlns="xmlns:xsd";
+		}
+		
+		parameterBuilder.append("<"+methodName+" "+xmlns+"=\""+serviceBean.getTargetNamespace()+"\">");
+		//遍历 输入参数
+		List<ParameterBean> inParameters = operation.getInParameters();
+		if(inParameters!=null){
+			for (ParameterBean parameterBean : inParameters) {
+				String parameterType = parameterBean.getParameterType();
+				String parameterName = parameterBean.getParameterName();
+				
+				recursionParameter(serviceBean,parameterName,parameterType,parameterBuilder);
+			}
+		}
+		
+		parameterBuilder.append("</"+methodName+">");
+		return parameterBuilder.toString();
+	}
+	
+	
+	private static void recursionParameter(ServiceBean serviceBean, String parameterName,
+			String parameterType, StringBuilder parameterBuilder) {
+		//基本类型
+		if(parameterType==null||"".equals(parameterType)||"string".equals(parameterType)
+				||"decimal".equals(parameterType)||"int".equals(parameterType)||"boolean".equals(parameterType)){
+			parameterBuilder.append("<"+parameterName+">?</"+parameterName+">");
+		}else{
+			List<BasicTypeBean> basicTypeBeans = getBasicTypeBean(serviceBean, parameterType);
+			if(basicTypeBeans==null){
+				throw new IllegalArgumentException("解析出错,不存在类型【"+parameterType+"】");
+			}
+			parameterBuilder.append("<"+parameterName+">");
+			//遍历类型
+			for (BasicTypeBean basicTypeBean : basicTypeBeans) {
+				if(basicTypeBean.getBasicType().equals(parameterType)){
+					parameterBuilder.append("<"+parameterName+">?</"+parameterName+">");
+					return;
+				}
+				recursionParameter(serviceBean, basicTypeBean.getBasicTypeName(), basicTypeBean.getBasicType(), parameterBuilder);
+			}
+			parameterBuilder.append("</"+parameterName+">");
+		}
+	}
+
+	/**
+	 * 找到调用的方法
+	 * @param operations
+	 * @param methodName
+	 * @return
+	 */
+	public static OperationBean getOperation(List<OperationBean> operations,String methodName){
+		for (OperationBean operationBean : operations) {
+			if(operationBean.getName().equals(methodName)){
+				return operationBean;
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * 获取所有的基本类型
+	 * @param serviceBean
+	 * @param parameterType
+	 * @return
+	 */
+	public static List<BasicTypeBean> getBasicTypeBean(ServiceBean serviceBean,String parameterType){
+		//获取参数实体
+		List<ParameterTypeBean> parameterTypes = serviceBean.getParameterTypes();
+		for (ParameterTypeBean typeBean : parameterTypes) {
+			//找到参数类型
+			if(parameterType.equals(typeBean.getTypeName())){
+				return typeBean.getBasicTypeBeans();
+			}
+		}
+		return null;
 	}
 	
 	/**

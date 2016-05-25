@@ -1,4 +1,4 @@
-package com.kingbase.ws.bean;
+package com.kingbase.wsdl.bean;
 
 /**
  * 参数
@@ -8,11 +8,10 @@ package com.kingbase.ws.bean;
 public class ParameterBean {
 
 	private String parameterName;// 参数名
-	
 	private String minOccurs;// 
 	private String maxOccurs;// 
-	private String nillable;// 
 	
+	private String nillable;// 
 	private String parameterType;// 参数类型
 
 	public String getParameterName() {

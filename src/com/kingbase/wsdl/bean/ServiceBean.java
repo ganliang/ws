@@ -1,4 +1,4 @@
-package com.kingbase.ws.bean;
+package com.kingbase.wsdl.bean;
 
 import java.util.ArrayList;
 import java.util.List;

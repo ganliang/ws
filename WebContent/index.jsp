@@ -95,9 +95,14 @@ body {
 		//点击运行 
 		$("#runComand").bind("click",function(){
 			var value=$("#parameterPanel").val();
+			/* value=value.replace("\r\n","");
+			value=value.replace("\r","");
+			value=value.replace("\n","");
+			value=value.replace("&nbsp",""); */
 			$.ajax({
 			    	type: "POST", 
-			    	url:'./WsdlLoadServlet?type=getResultDATA&serverName='+serverName+'&methodName='+methodName+'&parameterXML='+value,
+			    	data:{parameterXML:value},
+			    	url:'./WsdlLoadServlet?type=getResultDATA&serverName='+serverName+'&methodName='+methodName,
 			    	dataType: "text",
 			    	success:function(data){
 						$("#resultPanel").html(data);

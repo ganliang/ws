@@ -16,6 +16,8 @@ import org.dom4j.Element;
 import com.kingbase.ws.bean.BindingBean;
 import com.kingbase.ws.bean.OperationBean;
 import com.kingbase.ws.bean.ParameterBean;
+import com.kingbase.ws.bean.ParameterTypeBean;
+import com.kingbase.ws.bean.ParameterTypeBean.BasicTypeBean;
 import com.kingbase.ws.bean.ServiceBean;
 import com.kingbase.ws.utils.DocumentUtil;
 import com.kingbase.ws.utils.HttpClientUtil;
@@ -27,12 +29,16 @@ import com.kingbase.ws.utils.ParameterUtil;
  */
 public class SOAPParser {
 
-	private static final Map<String,List<ParameterBean>> parameters=new HashMap<String,List<ParameterBean>>();
-	private static final Map<String,Map<String,String>> portTypes=new HashMap<String,Map<String,String>>();
+	private Map<String,List<ParameterBean>> parameters=new HashMap<String,List<ParameterBean>>();
+	private Map<String,Map<String,String>> portTypes=new HashMap<String,Map<String,String>>();
+	//参数类型 对象
+	private List<ParameterTypeBean> parameterTypes=new ArrayList<ParameterTypeBean>();
 	private String wsdlType="";
+	private String hostURL="";
 	/**
 	 * 解析wsdl文件流
 	 * @param inputStream
+	 * @param wsdllocation 
 	 * @return
 	 * @throws WSDLException 
 	 */
@@ -47,20 +53,18 @@ public class SOAPParser {
 		Attribute targetNamespaceAttribute = rootElement.attribute("targetNamespace");
 		serviceBean.setTargetNamespace(targetNamespaceAttribute.getValue());//命名空间
 		
-		//构建参数
-		buildParameters(rootElement);
-		//获取所有的port
-		buildPortTypes(rootElement);
+		buildData(rootElement);
 		
 		//获取所有的binding
 		List<BindingBean> bindingBeans=buildBindings(rootElement);
-		
 		
 		//获取服务
 		buildServices(rootElement,serviceBean);
 		
 		serviceBean.setBindingBean(bindingBeans);
 		serviceBean.setWsdlType(wsdlType);
+		
+		serviceBean.setParameterTypes(parameterTypes);
 		return serviceBean;		
 	}
 	
@@ -74,7 +78,48 @@ public class SOAPParser {
 	public ServiceBean parse(String wsdllocation) throws SecurityException, IllegalArgumentException, IOException {
 		//获取流
 		InputStream inputStream = HttpClientUtil.send(wsdllocation);
+		
+		//获取服务域名
+		int indexOf = wsdllocation.indexOf("/", "http://".length());
+		hostURL=wsdllocation.substring(0, indexOf);
 		return parse(inputStream);
+	}
+
+	/**
+	 * 
+	 * @param rootElement
+	 * @param wsdllocation
+	 */
+	private void buildData(Element rootElement) {
+		Element root=null;
+		List<Element> importElements = getComponentElement(rootElement, "import");
+		//wsdl:types wsdl:message wsdl:portType  在同一个wsdl文件中
+		if(importElements.size()==0){
+			root=rootElement;
+			//构建参数
+			buildParameters(rootElement);
+			//获取所有的port
+			buildPortTypes(rootElement);
+		}
+		//wsdl:types wsdl:message wsdl:portType在另外一个wsdl文件中
+		else{
+			Element importElement = importElements.get(0);
+			String location = importElement.attributeValue("location");
+			
+			if(!location.startsWith("http://")&&!location.startsWith("https://")){
+				location=hostURL+location;
+			}
+			//发送请求 
+			InputStream inputStream = HttpClientUtil.send(location);
+			Document document = DocumentUtil.getDocument(inputStream);
+			root = document.getRootElement();
+		}
+		
+		//构建参数
+		buildParameters(root);
+		//获取所有的port
+		buildPortTypes(root);
+		
 	}
 
 	/**
@@ -134,15 +179,97 @@ public class SOAPParser {
 			buildParametersFromSOAP(schemaElement);
 			wsdlType="soap";
 		}
-		//如果存在 则types存在于import 文件
+		//如果存在 则types存在 import 文件
 		else{
-			Element element = importElements.get(0);
-			String schemaLocation = element.attribute("schemaLocation").getValue();
-			buildParametersFromXSD(schemaLocation);
-			wsdlType="xsd";
+			//存在 import 又存在 element 则 import的是 参数定义
+			List<Element> elements = getComponentElement(schemaElement, "element");
+			if(elements.size()>=1){
+				//参数类型导入文件
+				for (Element importElement : importElements) {
+					buildParameterType(importElement);
+				}
+				
+				buildParametersFromSOAP(schemaElement);
+				wsdlType="soap";
+			}else{
+				Element element = importElements.get(0);
+				String schemaLocation = element.attribute("schemaLocation").getValue();
+				buildParametersFromXSD(schemaLocation);
+				wsdlType="xsd";
+			}
 		}
 	}
 	
+	/**
+	 * 导入参数类型
+	 * @param importElement
+	 */
+	private void buildParameterType(Element importElement) {
+		String schemaLocation = importElement.attributeValue("schemaLocation");
+		if(!schemaLocation.startsWith("http://")&&!schemaLocation.startsWith("https://")){
+			schemaLocation=hostURL+schemaLocation;
+		}
+		InputStream inputStream = HttpClientUtil.send(schemaLocation);
+		Document document = DocumentUtil.getDocument(inputStream);
+		Element rootElement = document.getRootElement();
+		List<Element> complexTypeElements = getComponentElement(rootElement, "complexType");
+		
+		for (Element complexTypeElement : complexTypeElements) {
+			ParameterTypeBean parameterTypeBean=new ParameterTypeBean();
+			
+			//参数名称
+			String name = complexTypeElement.attributeValue("name");
+			parameterTypeBean.setTypeName(name);
+			parameterTypeBean.setType("complexType");
+			
+			//参数的实现类
+			String instanceClass = complexTypeElement.attributeValue("sdoJava:instanceClass");
+			parameterTypeBean.setInstanceClass(removePrefix(instanceClass, ":"));
+			
+			List<Element> sequenceElements = getComponentElement(complexTypeElement, "sequence");
+			if(sequenceElements.size()>0){
+				Element sequenceElement = sequenceElements.get(0);
+				List<Element> elements = getComponentElement(sequenceElement, "element");
+				
+				List<BasicTypeBean> basicTypeBeans=new ArrayList<BasicTypeBean>();
+				//遍历对象的参数
+				for (Element element : elements) {
+					BasicTypeBean basicTypeBean=new BasicTypeBean();
+					basicTypeBean.setBasicType(removePrefix(element.attributeValue("type"), ":"));
+					basicTypeBean.setBasicTypeName(element.attributeValue("name"));
+					basicTypeBean.setMaxOccurs(element.attributeValue("maxOccurs"));
+					basicTypeBean.setMinOccurs(element.attributeValue("minOccurs"));
+					basicTypeBean.setNillable(element.attributeValue("nillable"));
+					basicTypeBeans.add(basicTypeBean);
+				}
+				parameterTypeBean.setBasicTypeBeans(basicTypeBeans);
+			}
+			parameterTypes.add(parameterTypeBean);
+		}
+		
+		//遍历简单类型参数
+		List<Element> simpleTypeElements = getComponentElement(rootElement, "simpleType");
+		for (Element simpleTypeElement : simpleTypeElements) {
+			ParameterTypeBean parameterTypeBean=new ParameterTypeBean();
+			String name = simpleTypeElement.attributeValue("name");
+			parameterTypeBean.setTypeName(name);
+			parameterTypeBean.setType("simpleType");
+			
+			List<Element> restrictionElements = getComponentElement(simpleTypeElement, "restriction");
+			if(restrictionElements.size()>0){
+				List<String> values=new ArrayList<String>();
+				Element restrictionElement = restrictionElements.get(0);
+				//遍历枚举
+				List<Element> enumerationElements = getComponentElement(restrictionElement, "enumeration");
+				for (Element enumerationElement : enumerationElements) {
+					values.add(enumerationElement.attributeValue("value"));
+				}
+				parameterTypeBean.setValues(values);
+			}
+			parameterTypes.add(parameterTypeBean);
+		}
+	}
+
 	/**
 	 * 构建soap的方法
 	 * @param schemaLocation
@@ -213,6 +340,8 @@ public class SOAPParser {
 					parameterBean.setMinOccurs(value);
 				}else if("maxOccurs".equals(name)){
 					parameterBean.setMaxOccurs(value);
+				}else if("nillable".equals(name)){
+					parameterBean.setNillable(value);
 				}
 			}
 			parameterBeans.add(parameterBean);
@@ -377,8 +506,8 @@ public class SOAPParser {
 	
 	public static void main(String[] args)
 			throws SecurityException, IllegalArgumentException, IOException {
-		String wsdllocation = "http://www.webxml.com.cn/webservices/ChinaStockSmallImageWS.asmx?wsdl";
-		//String wsdllocation = "http://192.168.8.144:9999/services/helloWord?wsdl";
+		String wsdllocation = "http://192.168.1.36:8080/default/orgbizService?wsdl";
+		//String wsdllocation = "http://192.168.8.144:9000/serices/HelloWorld?wsdl";
 		SOAPParser parser = new SOAPParser();
 
 		ServiceBean serviceBean = parser.parse(wsdllocation);
@@ -393,6 +522,11 @@ public class SOAPParser {
 		String service = ParameterUtil.printService(serviceBean);
 		System.out.println(service);
 
+		List<ParameterTypeBean> parameterTypes2 = serviceBean.getParameterTypes();
+		for (ParameterTypeBean parameterTypeBean : parameterTypes2) {
+			System.out.println(parameterTypeBean);
+		}
 		
+		System.out.println(ParameterUtil.getInParameter2(serviceBean, "addOrg"));
 	}
 }

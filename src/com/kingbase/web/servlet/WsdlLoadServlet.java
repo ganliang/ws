@@ -15,8 +15,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.axiom.om.OMElement;
-import org.apache.axis2.AxisFault;
+import org.apache.http.ParseException;
 import org.apache.log4j.Logger;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -24,7 +23,7 @@ import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 
 import com.kingbase.ws.bean.ServiceBean;
-import com.kingbase.ws.caller.AxisCaller;
+import com.kingbase.ws.caller.HttpCaller;
 import com.kingbase.ws.parser.SOAPParser;
 import com.kingbase.ws.utils.ParameterUtil;
 import com.kingbase.ws.utils.XMLUtil;
@@ -68,13 +67,12 @@ public class WsdlLoadServlet extends HttpServlet{
 		//获取参数
 		case "getParameterDATA":
 			json=getParameterDATA(request);
-			json=XMLUtil.encodeParameterXML(json);
+			//json=XMLUtil.encodeParameterXML(json);
 			break;
 		//调用方法 返回结果
 		case "getResultDATA":
 			try {
 				json=getResultDATA(request);
-				json=XMLUtil.encodeResultXML(json);
 			} catch (DocumentException e) {
 				log.error("调用异常", e);
 				json=e.getLocalizedMessage();
@@ -114,21 +112,27 @@ public class WsdlLoadServlet extends HttpServlet{
 			throw new IllegalArgumentException();
 		}
 		
-		Map<String, Object> parameterMap = ParameterUtil.getInParameter(serviceBean, methodName);
-		
-		OMElement omElement = XMLUtil.createParameterElement(serviceBean.getTargetNamespace(),serviceBean.getWsdlType(), methodName, parameterMap);
-	    return omElement.toString();
+		//Map<String, Object> parameterMap = ParameterUtil.getInParameter(serviceBean, methodName);
+		//OMElement omElement = XMLUtil.createParameterElement(serviceBean.getTargetNamespace(),serviceBean.getWsdlType(), methodName, parameterMap);
+	    String json = ParameterUtil.getInParameter2(serviceBean, methodName);
+	    try {
+			json=XMLUtil.printXML(json);
+		} catch (DocumentException e) {
+			e.printStackTrace();
+		}
+		return json;
 	}
 	
 	/**
 	 * 获取方法调用的结果
 	 * @param request
 	 * @return
-	 * @throws AxisFault 
 	 * @throws DocumentException 
+	 * @throws IOException 
+	 * @throws ParseException 
 	 */
 	@SuppressWarnings("unchecked")
-	private String getResultDATA(HttpServletRequest request) throws AxisFault, DocumentException {
+	private String getResultDATA(HttpServletRequest request) throws DocumentException, ParseException, IOException {
 		String serverName=request.getParameter("serverName");
 		String methodName=request.getParameter("methodName");
 		String value=request.getParameter("parameterXML");
@@ -147,8 +151,23 @@ public class WsdlLoadServlet extends HttpServlet{
 			parameterMap.put(element.getName(), element.getTextTrim());
 		}
 		//调用
-		AxisCaller caller=new AxisCaller();
-		json = caller.caller(serviceBean.getEndpointURI(), serviceBean.getTargetNamespace(),serviceBean.getWsdlType(),methodName, parameterMap);	
+		//AxisCaller caller=new AxisCaller();
+		HttpCaller caller=new HttpCaller();
+		//json = caller.caller(serviceBean.getEndpointURI(), serviceBean.getTargetNamespace(),serviceBean.getWsdlType(),methodName, parameterMap);	
+		System.out.println(json);
+		for (int i = 0; i < value.length(); i++) {
+			char charAt = value.charAt(i);
+			System.out.println(charAt+"   "+(int)charAt);
+		}
+		value=value.replaceAll("\r", "");
+		value=value.replaceAll("\n", "");
+		value=value.replaceAll(">  <", "><");
+		value=value.replaceAll("> <", "><");
+		//value = value.replaceAll("&nbsp;", "");  //将&nbsp;替换成半角空格 
+		/*value = value.replaceAll("&nbsp",""); 
+		value = value.replaceAll(" {2,}",""); */
+		//System.out.println(value);
+		json = caller.caller(serviceBean.getEndpointURI(), serviceBean.getTargetNamespace(),serviceBean.getWsdlType(),methodName, value);	
 		return json;
 	}
 	
