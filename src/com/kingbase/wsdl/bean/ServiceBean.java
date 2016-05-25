@@ -11,6 +11,8 @@ public class ServiceBean {
 
 	private String documentation;//wsdl简介
 	
+	private String hostURL;//
+	
 	private String targetNamespace;//目标命名空间
 	
 	private String endpointURI;//发布的wsdl地址
@@ -19,8 +21,14 @@ public class ServiceBean {
 	
 	private String wsdlType;//soap xsd
 	
-	//一个服务包含多个 port
-	private List<BindingBean> bindingBean=new ArrayList<BindingBean>();
+	//binding
+	private List<BindingBean> bindingBeans=new ArrayList<BindingBean>();
+	
+	//port
+	private List<PortTypeBean> PortTypeBeans=new ArrayList<PortTypeBean>();
+	
+	//方法参数
+	private List<OperationBean> operationBeans=new ArrayList<OperationBean>();
 	
 	//服务包含的参数对象
 	private List<ParameterTypeBean> parameterTypes=new ArrayList<ParameterTypeBean>();
@@ -31,6 +39,14 @@ public class ServiceBean {
 
 	public void setDocumentation(String documentation) {
 		this.documentation = documentation;
+	}
+
+	public String getHostURL() {
+		return hostURL;
+	}
+
+	public void setHostURL(String hostURL) {
+		this.hostURL = hostURL;
 	}
 
 	public String getTargetNamespace() {
@@ -57,20 +73,36 @@ public class ServiceBean {
 		this.serviceName = serviceName;
 	}
 
-	public List<BindingBean> getBindingBean() {
-		return bindingBean;
-	}
-
-	public void setBindingBean(List<BindingBean> bindingBean) {
-		this.bindingBean = bindingBean;
-	}
-
 	public String getWsdlType() {
 		return wsdlType;
 	}
 
 	public void setWsdlType(String wsdlType) {
 		this.wsdlType = wsdlType;
+	}
+
+	public List<BindingBean> getBindingBeans() {
+		return bindingBeans;
+	}
+
+	public void setBindingBeans(List<BindingBean> bindingBeans) {
+		this.bindingBeans = bindingBeans;
+	}
+
+	public List<PortTypeBean> getPortTypeBeans() {
+		return PortTypeBeans;
+	}
+
+	public void setPortTypeBeans(List<PortTypeBean> portTypeBeans) {
+		PortTypeBeans = portTypeBeans;
+	}
+
+	public List<OperationBean> getOperationBeans() {
+		return operationBeans;
+	}
+
+	public void setOperationBeans(List<OperationBean> operationBeans) {
+		this.operationBeans = operationBeans;
 	}
 
 	public List<ParameterTypeBean> getParameterTypes() {
@@ -80,4 +112,5 @@ public class ServiceBean {
 	public void setParameterTypes(List<ParameterTypeBean> parameterTypes) {
 		this.parameterTypes = parameterTypes;
 	}
+
 }

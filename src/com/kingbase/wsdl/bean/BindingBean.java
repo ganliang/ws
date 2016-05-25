@@ -22,4 +22,10 @@ public class BindingBean {
 	public void setBindingType(String bindingType) {
 		this.bindingType = bindingType;
 	}
+	public List<OperationBean> getOperationBeans() {
+		return operationBeans;
+	}
+	public void setOperationBeans(List<OperationBean> operationBeans) {
+		this.operationBeans = operationBeans;
+	}
 }
