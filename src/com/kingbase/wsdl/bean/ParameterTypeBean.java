@@ -5,9 +5,25 @@ import java.util.List;
 
 public class ParameterTypeBean {
 
+	public static final List<String> basicTypes=new ArrayList<String>();
+	static{
+		basicTypes.add(null);
+		basicTypes.add("");
+		basicTypes.add("string");
+		basicTypes.add("decimal");
+		basicTypes.add("int");
+		basicTypes.add("float");
+		basicTypes.add("double");
+		basicTypes.add("boolean");
+		basicTypes.add("unsignedByte");
+	}
+	
 	private String typeName;//对象名称
 	private String instanceClass;//
 	private List<BasicTypeBean> BasicTypeBeans=new ArrayList<BasicTypeBean>();
+	
+	private List<String> values=new ArrayList<String>();
+	private String type;//
 	
 	public String getTypeName() {
 		return typeName;
@@ -30,8 +46,19 @@ public class ParameterTypeBean {
 	public void setBasicTypeBeans(List<BasicTypeBean> basicTypeBeans) {
 		BasicTypeBeans = basicTypeBeans;
 	}
-
 	
+	public List<String> getValues() {
+		return values;
+	}
+	public void setValues(List<String> values) {
+		this.values = values;
+	}
+	public String getType() {
+		return type;
+	}
+	public void setType(String type) {
+		this.type = type;
+	}
 	@Override
 	public String toString() {
 		return "ParameterTypeBean [typeName=" + typeName + ", instanceClass=" + instanceClass + ", BasicTypeBeans="

@@ -8,7 +8,7 @@ public class BindingBean {
 	private String bindingName;//
 	private String bindingType;//
 	
-	List<OperationBean> operationBeans=new ArrayList<OperationBean>();
+	private List<OperationBean> operationBeans=new ArrayList<OperationBean>();
 	
 	public String getBindingName() {
 		return bindingName;
@@ -27,5 +27,10 @@ public class BindingBean {
 	}
 	public void setOperationBeans(List<OperationBean> operationBeans) {
 		this.operationBeans = operationBeans;
+	}
+	@Override
+	public String toString() {
+		return "BindingBean [bindingName=" + bindingName + ", bindingType=" + bindingType + ", operationBeans="
+				+ operationBeans + "]";
 	}
 }

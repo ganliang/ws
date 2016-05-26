@@ -9,6 +9,8 @@ import java.util.List;
  */
 public class ServiceBean {
 
+	public static final String SERVICE="service";//服务节点
+	
 	private String documentation;//wsdl简介
 	
 	private String hostURL;//
@@ -33,6 +35,9 @@ public class ServiceBean {
 	//服务包含的参数对象
 	private List<ParameterTypeBean> parameterTypes=new ArrayList<ParameterTypeBean>();
 
+	//wsdl包含的import文件
+	private List<String> importWSDL=new ArrayList<String>();
+	
 	public String getDocumentation() {
 		return documentation;
 	}
@@ -113,4 +118,19 @@ public class ServiceBean {
 		this.parameterTypes = parameterTypes;
 	}
 
+	public List<String> getImportWSDL() {
+		return importWSDL;
+	}
+
+	public void setImportWSDL(List<String> importWSDL) {
+		this.importWSDL = importWSDL;
+	}
+
+	@Override
+	public String toString() {
+		return "ServiceBean [documentation=" + documentation + ", hostURL=" + hostURL + ", targetNamespace="
+				+ targetNamespace + ", endpointURI=" + endpointURI + ", serviceName=" + serviceName + ", wsdlType="
+				+ wsdlType + ", bindingBeans=" + bindingBeans + ", PortTypeBeans=" + PortTypeBeans + ", operationBeans="
+				+ operationBeans + ", parameterTypes=" + parameterTypes + ", importWSDL=" + importWSDL + "]";
+	}
 }

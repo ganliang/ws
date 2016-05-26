@@ -71,7 +71,7 @@ public class BindingParse {
 			List<Element> elements = ElementUtil.findElements(operationElement, OPERATION);
 			if(elements.size()>0){
 				Element element = elements.get(0);
-				String soapAction=element.attributeValue("name");
+				String soapAction=element.attributeValue("soapAction");
 				operationBean.setSoapAction(soapAction);
 				
 				String style=element.attributeValue("style");

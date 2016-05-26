@@ -73,4 +73,11 @@ public class OperationBean {
 		this.outParameters = outParameters;
 	}
 
+	@Override
+	public String toString() {
+		return "OperationBean [operationName=" + operationName + ", documentation=" + documentation + ", style=" + style
+				+ ", soapAction=" + soapAction + ", inParameters=" + inParameters + ", outParameters=" + outParameters
+				+ "]";
+	}
+
 }

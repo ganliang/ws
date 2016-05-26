@@ -209,8 +209,8 @@ public class ParameterUtil {
 			//遍历类型
 			for (BasicTypeBean basicTypeBean : basicTypeBeans) {
 				if(basicTypeBean.getBasicType().equals(parameterType)){
-					parameterBuilder.append("<"+parameterName+">?</"+parameterName+">");
-					return;
+					parameterBuilder.append("<"+basicTypeBean.getBasicTypeName()+">?</"+basicTypeBean.getBasicTypeName()+">");
+					continue;
 				}
 				recursionParameter(serviceBean, basicTypeBean.getBasicTypeName(), basicTypeBean.getBasicType(), parameterBuilder);
 			}

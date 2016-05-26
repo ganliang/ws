@@ -21,9 +21,10 @@ public class ServiceParse {
 	/**
 	 * 解析 service
 	 * @param element 
+	 * @param wsdl 
 	 * @param ServiceBean 
 	 */
-	public static ServiceBean parse(Element element){
+	public static ServiceBean parse(Element element, String wsdl){
 		if(element==null){
 			throw new WSDLServiceException("节点不能为空");
 		}
@@ -41,10 +42,20 @@ public class ServiceParse {
 			throw new WSDLServiceException("WSDL格式不正确,不存在services节点");
 		}
 		Element serviceElement = serviceElements.get(0);
+		//获取服务名称
+		String serviceName = serviceElement.attributeValue("name");
+		serviceBean.setServiceName(serviceName);
+		
 		//设置服务描述
 		String documentation=getDocumentation(serviceElement);
 		serviceBean.setDocumentation(documentation);
 		
+		//设置服务host
+		int indexOf = wsdl.indexOf("/", "https://".length());
+		serviceBean.setHostURL(wsdl.substring(0, indexOf));
+		serviceBean.setEndpointURI(wsdl);
+		
+		serviceBean.getImportWSDL().add(wsdl);
 		return serviceBean;
 	}
 	

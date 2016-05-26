@@ -24,5 +24,11 @@ public class PortTypeBean {
 	public void setOperationBeans(List<OperationBean> operationBeans) {
 		this.operationBeans = operationBeans;
 	}
+
+	@Override
+	public String toString() {
+		return "PortTypeBean [portName=" + portName + ", operationBeans=" + operationBeans + "]";
+	}
+	
 	
 }

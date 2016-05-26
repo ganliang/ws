@@ -6,13 +6,15 @@ package com.kingbase.wsdl.bean;
  *
  */
 public class ParameterBean {
-
+	
 	private String parameterName;// 参数名
 	private String minOccurs;// 
 	private String maxOccurs;// 
 	
 	private String nillable;// 
 	private String parameterType;// 参数类型
+	
+	
 
 	public String getParameterName() {
 		return parameterName;

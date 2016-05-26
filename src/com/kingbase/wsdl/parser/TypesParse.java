@@ -1,12 +1,16 @@
 package com.kingbase.wsdl.parser;
 
+import java.io.InputStream;
 import java.util.List;
 
+import org.dom4j.Document;
 import org.dom4j.Element;
 
 import com.kingbase.wsdl.bean.ServiceBean;
 import com.kingbase.wsdl.exceptions.WSDLServiceException;
+import com.kingbase.wsdl.utils.DocumentUtil;
 import com.kingbase.wsdl.utils.ElementUtil;
+import com.kingbase.wsdl.utils.HttpClientUtil;
 
 /**
  * 解析wsdl types
@@ -30,43 +34,40 @@ public class TypesParse {
 			throw new WSDLServiceException("types节点存在于根节点");
 		}
 		
-		List<Element> importElements = ElementUtil.findElements(element,IMPORT);
-		//wsdl将 wsdl:types wsdl:message wsdl:portType 节点存放在本文件中
-		if(importElements.size()==0){
-			parseTypesFromLocal(element,serviceBean);
+		List<Element> typesElements = ElementUtil.findElements(element, TYPES);
+		if(typesElements.size()==0){
+			throw new IllegalArgumentException("types节点不存在");
 		}
-		//wsdl文件 将wsdl:types wsdl:message wsdl:portType 存放在另一个wsdl文件中
+		List<Element> schemaElements = ElementUtil.findElements(typesElements.get(0), SCHEMA);
+		if(schemaElements.size()==0){
+			throw new IllegalArgumentException("types节点下不存在schema子节点");
+		}
+		//查看 schema节点下 是否存在 import节点 
+		Element schemaElement = schemaElements.get(0);
+		
+		List<Element> importElements = ElementUtil.findElements(schemaElement,IMPORT);
+		
+		//schema节点 是否存在 element节点
+		List<Element> elements = ElementUtil.findElements(schemaElement,"element");
+		
+		//soap 方式解析schema
+		if(importElements.size()==0||(importElements.size()>0&&elements.size()>0)){
+			parseSchemaFromSOAP(schemaElement,serviceBean);
+		}
+		//xsd方式解析schema
 		else{
-			parseTypesFromImport(importElements.get(0),serviceBean);
+			parseSchemaFromXSD(importElements.get(0),serviceBean);
 		}
 	}
 	
 	/**
 	 * 从本地文件中 获取types节点
-	 * @param element 根节点
+	 * @param schemaElement schema节点
 	 * @param serviceBean
 	 */
-	public static void parseTypesFromLocal(Element element, ServiceBean serviceBean) {
-		List<Element> typesElements = ElementUtil.findElements(element,TYPES);
-		if(typesElements.size()==0){
-			throw new IllegalArgumentException("WSDL格式不正确,缺少types节点");
-		}
-		Element typesElement = typesElements.get(0);
-		
-		List<Element> schemaelements = ElementUtil.findElements(typesElement, SCHEMA);
-		if(schemaelements.size()>0){
-			Element schemaelement = schemaelements.get(0);
-			
-			List<Element> importElements = ElementUtil.findElements(schemaelement, IMPORT);
-			//将方法 参数存放在本地wsdl中
-			if(importElements.size()==0){
-				OperationParse.parseOperationsFromLocal(schemaelement,serviceBean);
-			}
-			//将方法 参数存放在另一个wsdl中
-			else{
-				OperationParse.parseOperationsFromImport(importElements.get(0),serviceBean);
-			}
-		}
+	public static void parseSchemaFromSOAP(Element schemaElement, ServiceBean serviceBean) {
+		serviceBean.setWsdlType("soap");
+		OperationParse.parseOperationsFromSOAP(schemaElement, serviceBean);
 	}
 	
 	/**
@@ -74,8 +75,21 @@ public class TypesParse {
 	 * @param importElement
 	 * @param serviceBean
 	 */
-	private static void parseTypesFromImport(Element importElement, ServiceBean serviceBean) {
+	private static void parseSchemaFromXSD(Element importElement, ServiceBean serviceBean) {
+		String schemaLocation = importElement.attributeValue("schemaLocation");
+		if(!schemaLocation.startsWith("http://")&&!schemaLocation.startsWith("https://")){
+			schemaLocation=serviceBean.getHostURL()+schemaLocation;
+		}
+		serviceBean.getImportWSDL().add(schemaLocation);
 		
+		//下载import文件
+		InputStream inputStream = HttpClientUtil.send(schemaLocation);
+		Document document = DocumentUtil.getDocument(inputStream);
+		//获取根节点(schema节点)
+		Element rootElement = ElementUtil.getRootElement(document);
 		
+		serviceBean.setWsdlType("xsd");
+		
+		OperationParse.parseOperationsFromXSD(rootElement, serviceBean);
 	}
 }

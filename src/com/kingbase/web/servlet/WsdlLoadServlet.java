@@ -154,19 +154,12 @@ public class WsdlLoadServlet extends HttpServlet{
 		//AxisCaller caller=new AxisCaller();
 		HttpCaller caller=new HttpCaller();
 		//json = caller.caller(serviceBean.getEndpointURI(), serviceBean.getTargetNamespace(),serviceBean.getWsdlType(),methodName, parameterMap);	
-		System.out.println(json);
-		for (int i = 0; i < value.length(); i++) {
-			char charAt = value.charAt(i);
-			System.out.println(charAt+"   "+(int)charAt);
-		}
+		
+		//value = StringUtil.trim(value);
 		value=value.replaceAll("\r", "");
 		value=value.replaceAll("\n", "");
-		value=value.replaceAll(">  <", "><");
-		value=value.replaceAll("> <", "><");
-		//value = value.replaceAll("&nbsp;", "");  //将&nbsp;替换成半角空格 
-		/*value = value.replaceAll("&nbsp",""); 
-		value = value.replaceAll(" {2,}",""); */
-		//System.out.println(value);
+		value = value.replaceAll("> +", ">");
+		
 		json = caller.caller(serviceBean.getEndpointURI(), serviceBean.getTargetNamespace(),serviceBean.getWsdlType(),methodName, value);	
 		return json;
 	}
